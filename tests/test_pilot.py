@@ -52,27 +52,42 @@ class PilotTest(unittest.TestCase):
         self.assertEqual(('AI开放', '数据创作', '平台治理', '哲学原则', '公共议题'),
                          pilot.DIMENSIONS)
         form = FORMS['D1']
-        self.assertIn('基础调用接口', form['items'][0]['stem'])
-        self.assertIn('训练', next(item for item in form['items'] if item['id'] == 'Q11')['stem'])
-        self.assertIn('动机', next(item for item in form['items'] if item['id'] == 'Q31')['stem'])
+        self.assertIn('完整测试题', form['items'][0]['stem'])
+        self.assertIn('训练', next(item for item in form['items'] if item['id'] == 'Q12')['stem'])
+        self.assertIn('未来公众', next(item for item in form['items'] if item['id'] == 'Q31')['stem'])
         self.assertIn('规则', form['system'])
 
     def test_v3_replaces_only_pilot_flip_items(self):
         replaced = {'Q01', 'Q11', 'Q27', 'Q35', 'Q42', 'Q44'}
         old_bank = pilot.load_bank(pilot.ROOT / 'data/questions-v2.tsv')
         old_forms = pilot.forms(old_bank)
-        self.assertEqual(replaced, {key for key in BANK if BANK[key] != old_bank[key]})
+        v3 = pilot.load_bank(pilot.ROOT / 'data/questions-v3.tsv')
+        v3_forms = pilot.forms(v3)
+        self.assertEqual(replaced, {key for key in v3 if v3[key] != old_bank[key]})
         for key in replaced:
-            self.assertEqual(old_bank[key][0], BANK[key][0])
-            self.assertTrue(all(a != b for a, b in zip(old_bank[key][1], BANK[key][1])))
-            self.assertFalse(set(old_bank[key][2]) & set(BANK[key][2]))
-        for name in FORMS:
-            for old, current in zip(old_forms[name]['items'], FORMS[name]['items']):
+            self.assertEqual(old_bank[key][0], v3[key][0])
+            self.assertTrue(all(a != b for a, b in zip(old_bank[key][1], v3[key][1])))
+            self.assertFalse(set(old_bank[key][2]) & set(v3[key][2]))
+        for name in v3_forms:
+            for old, current in zip(old_forms[name]['items'], v3_forms[name]['items']):
                 self.assertEqual((old['id'], old['a_semantic']),
                                  (current['id'], current['a_semantic']))
                 if old['id'] not in replaced:
                     self.assertEqual(old, current)
-        self.assertNotEqual(pilot.digest(old_forms), pilot.digest(FORMS))
+        self.assertNotEqual(pilot.digest(old_forms), pilot.digest(v3_forms))
+
+    def test_v4_replaces_only_v3_flip_or_missing_items(self):
+        replaced = {'Q01', 'Q02', 'Q11', 'Q18', 'Q22', 'Q27', 'Q31', 'Q34', 'Q35', 'Q36'}
+        previous = pilot.load_bank(pilot.ROOT / 'data/questions-v3.tsv')
+        self.assertEqual(replaced, {key for key in BANK if BANK[key] != previous[key]})
+        previous_forms = pilot.forms(previous)
+        for name, form in FORMS.items():
+            for old, current in zip(previous_forms[name]['items'], form['items']):
+                self.assertEqual((old['id'], old['a_semantic']),
+                                 (current['id'], current['a_semantic']))
+                if current['id'] not in replaced:
+                    self.assertEqual(old, current)
+        self.assertNotEqual(pilot.digest(previous_forms), pilot.digest(FORMS))
 
     def test_config_controls(self):
         for form in FORMS.values():

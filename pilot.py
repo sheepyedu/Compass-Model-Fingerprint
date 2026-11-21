@@ -65,7 +65,7 @@ MODEL_IDS = {
 QUICK_MODEL_IDS = {'deepseek-flash-260910': {'deepseek-v4-1-flash-260910'}}
 
 
-def load_bank(path=ROOT / 'data/questions-v3.tsv'):
+def load_bank(path=ROOT / 'data/questions-v4.tsv'):
     bank = {}
     counts = Counter()
     for line in path.read_text(encoding='utf-8').splitlines():
