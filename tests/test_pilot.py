@@ -52,9 +52,7 @@ class PilotTest(unittest.TestCase):
         self.assertEqual(('AI开放', '数据创作', '平台治理', '哲学原则', '公共议题'),
                          pilot.DIMENSIONS)
         form = FORMS['D1']
-        self.assertIn('完整测试题', form['items'][0]['stem'])
-        self.assertIn('训练', next(item for item in form['items'] if item['id'] == 'Q12')['stem'])
-        self.assertIn('未来公众', next(item for item in form['items'] if item['id'] == 'Q31')['stem'])
+        self.assertEqual(sorted(BANK), [item['id'] for item in form['items']])
         self.assertIn('规则', form['system'])
 
     def test_v3_replaces_only_pilot_flip_items(self):
@@ -79,15 +77,42 @@ class PilotTest(unittest.TestCase):
     def test_v4_replaces_only_v3_flip_or_missing_items(self):
         replaced = {'Q01', 'Q02', 'Q11', 'Q18', 'Q22', 'Q27', 'Q31', 'Q34', 'Q35', 'Q36'}
         previous = pilot.load_bank(pilot.ROOT / 'data/questions-v3.tsv')
-        self.assertEqual(replaced, {key for key in BANK if BANK[key] != previous[key]})
+        v4 = pilot.load_bank(pilot.ROOT / 'data/questions-v4.tsv')
+        self.assertEqual(replaced, {key for key in v4 if v4[key] != previous[key]})
+        v4_forms = pilot.forms(v4)
         previous_forms = pilot.forms(previous)
-        for name, form in FORMS.items():
+        for name, form in v4_forms.items():
             for old, current in zip(previous_forms[name]['items'], form['items']):
                 self.assertEqual((old['id'], old['a_semantic']),
                                  (current['id'], current['a_semantic']))
                 if current['id'] not in replaced:
                     self.assertEqual(old, current)
-        self.assertNotEqual(pilot.digest(previous_forms), pilot.digest(FORMS))
+        self.assertNotEqual(pilot.digest(previous_forms), pilot.digest(v4_forms))
+
+    def test_three_pilot_revisions_change_only_observed_problem_items(self):
+        replacements = {
+            5: {'Q05', 'Q18', 'Q30', 'Q33'},
+            6: {'Q01', 'Q07', 'Q08', 'Q09', 'Q11', 'Q16', 'Q22', 'Q24',
+                'Q25', 'Q28', 'Q29', 'Q30', 'Q44', 'Q46', 'Q50'},
+            7: {'Q09', 'Q22', 'Q25', 'Q28', 'Q29', 'Q35'},
+        }
+        for version, expected in replacements.items():
+            with self.subTest(version=version):
+                old = pilot.load_bank(pilot.ROOT / f'data/questions-v{version-1}.tsv')
+                current = pilot.load_bank(pilot.ROOT / f'data/questions-v{version}.tsv')
+                self.assertEqual(expected, {key for key in old if old[key] != current[key]})
+                for key in expected:
+                    self.assertEqual(old[key][0], current[key][0])
+                    self.assertTrue(all(a != b for a, b in zip(old[key][1], current[key][1])))
+                    self.assertFalse(set(old[key][2]) & set(current[key][2]))
+                old_forms, new_forms = pilot.forms(old), pilot.forms(current)
+                self.assertNotEqual(pilot.digest(old_forms), pilot.digest(new_forms))
+                for name in old_forms:
+                    for left, right in zip(old_forms[name]['items'], new_forms[name]['items']):
+                        self.assertEqual((left['id'], left['a_semantic']),
+                                         (right['id'], right['a_semantic']))
+                        if left['id'] not in expected:
+                            self.assertEqual(left, right)
 
     def test_config_controls(self):
         for form in FORMS.values():
