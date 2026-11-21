@@ -16,3 +16,7 @@
 ## 调整 Claude 白名单
 
 - 实现提交 `da7e1e34c98b4cf707bdca228808d2520cdb1c95`。官方仍提供 Haiku 4.5，但将其列为 Legacy。按本轮约束，仅保留 Haiku 5.5 和 Sonnet 5、5.5。候选版本以官方目录中的独立模型 ID 为准，预算重算为 63 个开发槽位。
+
+## 加入 Sonnet 4.6 对照
+
+- 实现提交 `cb92036a09fb3766d43373ad949dd4e8269bf9df`。Sonnet 4.6 按用户指定加入，明确标注官方 Legacy 状态。白名单回归测试验证其 API ID，并保留对旧 Haiku 的排除。
