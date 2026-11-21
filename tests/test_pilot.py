@@ -89,12 +89,15 @@ class PilotTest(unittest.TestCase):
                     self.assertEqual(old, current)
         self.assertNotEqual(pilot.digest(previous_forms), pilot.digest(v4_forms))
 
-    def test_three_pilot_revisions_change_only_observed_problem_items(self):
+    def test_iterative_pilot_revisions_change_only_observed_problem_items(self):
         replacements = {
             5: {'Q05', 'Q18', 'Q30', 'Q33'},
             6: {'Q01', 'Q07', 'Q08', 'Q09', 'Q11', 'Q16', 'Q22', 'Q24',
                 'Q25', 'Q28', 'Q29', 'Q30', 'Q44', 'Q46', 'Q50'},
             7: {'Q09', 'Q22', 'Q25', 'Q28', 'Q29', 'Q35'},
+            8: {'Q02', 'Q11', 'Q24', 'Q50'},
+            9: {'Q15', 'Q16', 'Q26'},
+            10: {'Q02', 'Q15'},
         }
         for version, expected in replacements.items():
             with self.subTest(version=version):
