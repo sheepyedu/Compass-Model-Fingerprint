@@ -16,3 +16,5 @@
 小批量试测时，为预算、采集和报告命令加 `--quick`，可对一至两个模型各做三次整卷调用。筛题依据和修订候选见[题面预筛](docs/QUESTION_REVIEW.md)。
 
 [两款 DeepSeek 近邻快照小试结果](docs/PILOT_RESULTS.md)记录真实用量、复测结果和优先修订题。
+
+[Terra 与 Haiku 的 v3 小试结果](docs/PILOT_V3_RESULTS.md)记录跨系列小试、六道替换题的表现及回收 Haiku 有效答卷的配置。
