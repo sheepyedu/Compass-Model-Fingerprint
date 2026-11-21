@@ -19,7 +19,7 @@
 
 Sonnet 采用 5、5.5 和指定加入的 4.6。4.6 在官方模型页标为 Legacy，生命周期页面仍列为 Active。官方目录中较新的 Haiku 只有 5.5，4.5 已列为 Legacy，因此 Haiku 暂只占一个席位。网关访问仍待验证。 [DeepSeek 定价](https://api-docs.deepseek.com/quick_start/pricing/) · [OpenAI 定价](https://developers.openai.com/api/docs/pricing) · [Claude 定价](https://platform.claude.com/docs/en/about-claude/pricing) · [Claude 生命周期](https://platform.claude.com/docs/en/about-claude/model-deprecations)
 
-官方费率下，以每次 15,000 输入 token、最多 1,024 计费输出 token 预留，本轮十端点七次约 **1.93 美元**，其中 DeepSeek 两端点约 **0.21 美元**。按当前模板正文和每次 1,024 token 的消息开销预留计算，十端点的官方费率参考值约 **1.80 美元**。运行器计算每份实际消息正文 UTF-8 字节数，再加清单中的服务端消息开销预留，乘以确认的端点费率。对存在未知服务端提示、分词或计价开销的网关，先核实后调整预留。
+官方费率下，以每次 15,000 输入 token、最多 1,024 计费输出 token 预留，本轮十端点七次约 **1.93 美元**，其中 DeepSeek 两端点约 **0.21 美元**。按当前模板正文和每次 1,024 token 的消息开销预留计算，v2 题卷的官方费率参考值约 **1.58 美元**。运行器计算每份实际消息正文 UTF-8 字节数，再加清单中的服务端消息开销预留，乘以确认的端点费率。对存在未知服务端提示、分词或计价开销的网关，先核实后调整预留。
 
 ## 本地清单
 

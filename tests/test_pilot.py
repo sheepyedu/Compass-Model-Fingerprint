@@ -48,6 +48,15 @@ class PilotTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, '白名单'):
                 pilot.read_endpoints(path)
 
+    def test_default_questionnaire_covers_technology_and_philosophy(self):
+        self.assertEqual(('AI开放', '数据创作', '平台治理', '哲学原则', '公共议题'),
+                         pilot.DIMENSIONS)
+        form = FORMS['D1']
+        self.assertIn('模型权重', form['items'][0]['stem'])
+        self.assertIn('训练', next(item for item in form['items'] if item['id'] == 'Q11')['stem'])
+        self.assertIn('动机', next(item for item in form['items'] if item['id'] == 'Q31')['stem'])
+        self.assertIn('规则', form['system'])
+
     def test_config_controls(self):
         for form in FORMS.values():
             self.assertEqual(25, sum(item['a_semantic'] == 1 for item in form['items']))

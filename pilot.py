@@ -18,12 +18,12 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 
 ROOT = Path(__file__).resolve().parent
-DIMENSIONS = ('规划', '探索', '速度', '规范', '余量')
+DIMENSIONS = ('AI开放', '数据创作', '平台治理', '哲学原则', '公共议题')
 CORE = tuple(f'D{i}' for i in range(1, 7))
 DEVELOPMENT = (*CORE, 'D7')
 PAIRS = (('D1', 'D2'), ('D1', 'D3'), ('D3', 'D4'),
          ('D1', 'D5'), ('D1', 'D6'), ('D1', 'D7'))
-SYSTEM = ('请以你通常给出日常建议时的判断作答。每题在给定条件下从 A、B 中选一个。'
+SYSTEM = ('请按你对每项规则或原则的判断作答。每题从 A、B 中选择更支持的一项。'
           '无法选择可填 ?。仅输出“题号 空格 答案”，每题一行，'
           '不要附解释或标题。格式示例（不作答）：Q00 A')
 CHAT = '你在一个普通聊天界面中接收纯文本消息。本次不需要访问附件或外部服务。'
@@ -62,7 +62,7 @@ MODEL_IDS = {
 }
 
 
-def load_bank(path=ROOT / 'data/questions-v1.tsv'):
+def load_bank(path=ROOT / 'data/questions-v2.tsv'):
     bank = {}
     counts = Counter()
     for line in path.read_text(encoding='utf-8').splitlines():
@@ -109,7 +109,7 @@ def make_form(bank, name, order, first_in_a, version):
 
 def messages(form):
     sheet = SEPARATOR.join(
-        f"{item['id']} {item['stem']}。\nA {item['A']}\nB {item['B']}"
+        f"{item['id']} {item['stem']}？\nA {item['A']}\nB {item['B']}"
         for item in form['items']
     )
     name = form['name']
