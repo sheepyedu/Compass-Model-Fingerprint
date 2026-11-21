@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+import json
 import os
 from pathlib import Path
 import tempfile
@@ -28,6 +29,24 @@ def endpoint(candidate):
 
 
 class PilotTest(unittest.TestCase):
+    def test_claude_allowlist_omits_legacy_haiku(self):
+        expected = {
+            'claude-haiku-55': 'claude-haiku-5-5',
+            'claude-sonnet-5': 'claude-sonnet-5',
+            'claude-sonnet-55': 'claude-sonnet-5-5',
+        }
+        self.assertEqual(set(expected), {key for key in pilot.MODEL_IDS if key.startswith('claude-')})
+        config = [dict(endpoint(key), model=model, defaults={})
+                  for key, model in expected.items()]
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'endpoints.json'
+            path.write_text(json.dumps(config))
+            self.assertEqual(config, pilot.read_endpoints(path))
+            config[0].update(candidate='claude-haiku-45', model='claude-haiku-4-5-20251001')
+            path.write_text(json.dumps(config))
+            with self.assertRaisesRegex(ValueError, '白名单'):
+                pilot.read_endpoints(path)
+
     def test_config_controls(self):
         for form in FORMS.values():
             self.assertEqual(25, sum(item['a_semantic'] == 1 for item in form['items']))
