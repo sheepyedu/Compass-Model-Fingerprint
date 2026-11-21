@@ -18,3 +18,5 @@
 [两款 DeepSeek 近邻快照小试结果](docs/PILOT_RESULTS.md)记录真实用量、复测结果和优先修订题。
 
 [Terra 与 Haiku 的 v3 小试结果](docs/PILOT_V3_RESULTS.md)记录跨系列小试、六道替换题的表现及回收 Haiku 有效答卷的配置。
+
+[Luna 与 Sonnet 的 v4 小试结果](docs/PILOT_V4_RESULTS.md)记录十道替换题、一项稳定区分候选及尚需复查的四道题。
