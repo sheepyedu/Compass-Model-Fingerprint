@@ -12,3 +12,5 @@
 [题目选择依据](docs/QUESTION_DESIGN.md)记录补充来源、题库审阅和 D7 聊天提示对照。当前题库在 `data/questions-v2.tsv`，每行依次是题号、维度、基线题干、开发等义题干、两套盲测题干和两个固定语义选项。v1 为日常取舍历史版本。
 
 `pilot.py` 使用 Python 标准库。先运行 `python3 pilot.py validate`。有已核对的端点配置后运行 `python3 pilot.py budget --endpoints <本地清单>`，以 `python3 pilot.py collect --endpoints <本地清单> --db <本地账本> --max-usd <批准上限>` 发送。运行 `python3 pilot.py report --endpoints <本地清单> --db <本地账本>` 查看已记录结果。配置结构及预算见[试验运行说明](docs/PILOT.md)，合成测试见 [TEST.md](TEST.md)。
+
+小批量试测时，为预算、采集和报告命令加 `--quick`，可对一至两个模型各做三次整卷调用。筛题依据和修订候选见[题面预筛](docs/QUESTION_REVIEW.md)。

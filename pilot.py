@@ -14,13 +14,14 @@ import sqlite3
 import sys
 from urllib.error import HTTPError
 from urllib.parse import urlsplit
-from urllib.request import HTTPRedirectHandler, Request, build_opener
+from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
 
 ROOT = Path(__file__).resolve().parent
 DIMENSIONS = ('AI开放', '数据创作', '平台治理', '哲学原则', '公共议题')
 CORE = tuple(f'D{i}' for i in range(1, 7))
 DEVELOPMENT = (*CORE, 'D7')
+QUICK = ('D1', 'D2', 'D6')
 PAIRS = (('D1', 'D2'), ('D1', 'D3'), ('D3', 'D4'),
          ('D1', 'D5'), ('D1', 'D6'), ('D1', 'D7'))
 SYSTEM = ('请按你对每项规则或原则的判断作答。每题从 A、B 中选择更支持的一项。'
@@ -49,7 +50,7 @@ LABELS = {
     'claude-sonnet-55': 'Claude Sonnet 5.5',
 }
 MODEL_IDS = {
-    'deepseek-flash': {'deepseek-flash'},
+    'deepseek-flash': {'deepseek-flash', 'deepseek-v4-1-flash-261017'},
     'deepseek-pro': {'deepseek-v4-pro'},
     'gpt-sol-61': {'gpt-6.1-sol'},
     'gpt-sol-62': {'gpt-6.2-sol'},
@@ -60,6 +61,8 @@ MODEL_IDS = {
     'claude-sonnet-5': {'claude-sonnet-5'},
     'claude-sonnet-55': {'claude-sonnet-5-5'},
 }
+
+QUICK_MODEL_IDS = {'deepseek-flash-260910': {'deepseek-v4-1-flash-260910'}}
 
 
 def load_bank(path=ROOT / 'data/questions-v2.tsv'):
@@ -177,7 +180,7 @@ def choose(bank, records):
     common = [name for name in CORE if all(
         name in row and row[name] and row[name]['usable'] for row in records.values()
     )]
-    if not common:
+    if not common or len(records) < 2:
         return common, []
     items = []
     for key, (dimension, _, _) in bank.items():
@@ -215,20 +218,24 @@ def digest(value):
     return hashlib.sha256(canonical(value).encode()).hexdigest()
 
 
-def read_endpoints(path):
+def read_endpoints(path, quick=False, allow_http=False):
     config = json.loads(path.read_text(encoding='utf-8'))
     ids = [entry['candidate'] for entry in config]
-    if len(ids) < 2 or len(ids) != len(set(ids)) or set(ids) - LABELS.keys():
-        raise ValueError('清单需要至少两个不同的授权候选，候选必须在白名单中')
+    valid_count = 1 <= len(ids) <= 2 if quick else len(ids) >= 2
+    allowed_models = MODEL_IDS | QUICK_MODEL_IDS if quick else MODEL_IDS
+    if not valid_count or len(ids) != len(set(ids)) or set(ids) - allowed_models.keys():
+        raise ValueError('候选必须在白名单中，小试使用一至两个候选，完整开发至少两个')
     routes = [(e['url'], e['model']) for e in config]
     if len(routes) != len(set(routes)):
         raise ValueError('候选清单不能包含重复请求路径和模型名称')
     for entry in config:
-        if entry['model'] not in MODEL_IDS[entry['candidate']]:
+        if entry['model'] not in allowed_models[entry['candidate']]:
             raise ValueError(f"{entry['candidate']} 的请求 ID 未与授权模型核对")
         url = urlsplit(entry['url'])
-        if url.scheme != 'https' or not url.hostname or url.username or url.password or url.query or url.fragment:
-            raise ValueError(f"{entry['candidate']} 需要无内嵌凭据、查询参数或片段的 HTTPS 入口")
+        permitted = url.scheme == 'https' or (quick and allow_http and url.scheme == 'http')
+        if not permitted or not url.hostname or url.username or url.password or url.query or url.fragment:
+            raise ValueError(f"{entry['candidate']} 需要无内嵌凭据、查询参数或片段的 HTTPS 入口，"
+                             '明文 HTTP 仅限显式授权的小试')
         if entry['api'] not in ('chat', 'responses', 'messages'):
             raise ValueError(f"{entry['candidate']} 的接口类型无效")
         if entry['two_user_turns'] not in ('preserved', 'merged', 'unknown', 'rejected'):
@@ -254,13 +261,13 @@ def read_endpoints(path):
     return config
 
 
-def budget(config, questionnaires):
+def budget(config, questionnaires, configurations=DEVELOPMENT):
     rows = []
     for endpoint in config:
         input_rate = endpoint['input_usd_per_million']
         output_rate = endpoint['output_usd_per_million']
         cap = endpoint['output_cap']
-        for name in DEVELOPMENT:
+        for name in configurations:
             form = questionnaires[name]
             prompt_bytes = len(form['system'].encode()) + sum(
                 len(message['content'].encode()) for message in messages(form)
@@ -293,7 +300,10 @@ def invoke(endpoint, form, key, timeout=90):
         headers['Authorization'] = f'Bearer {key}'
     request = Request(endpoint['url'], data=canonical(body).encode(), headers=headers, method='POST')
     try:
-        with build_opener(NoRedirect()).open(request, timeout=timeout) as response:
+        handlers = [NoRedirect()]
+        if request.type == 'http':
+            handlers.append(ProxyHandler({}))
+        with build_opener(*handlers).open(request, timeout=timeout) as response:
             value = json.load(response)
             result = decode_response(api, value)
             result['request_id'] = response.headers.get('x-request-id') or response.headers.get('request-id')
@@ -360,7 +370,7 @@ def claim(db, candidate, name):
                           (candidate, name)).rowcount == 1
 
 
-def collect(db, config, questionnaires, dispatch=invoke):
+def collect(db, config, questionnaires, dispatch=invoke, configurations=DEVELOPMENT):
     keys = {}
     for endpoint in config:
         env_name = endpoint['key_env']
@@ -369,7 +379,7 @@ def collect(db, config, questionnaires, dispatch=invoke):
             raise ValueError(f"{endpoint['candidate']} 的凭据环境变量尚未设置")
         keys[endpoint['candidate']] = key
     costs = {entry['candidate']: entry for entry in config}
-    for name in DEVELOPMENT:
+    for name in configurations:
         for candidate in costs:
             if not claim(db, candidate, name):
                 continue
@@ -378,6 +388,37 @@ def collect(db, config, questionnaires, dispatch=invoke):
             with db:
                 db.execute('UPDATE slots SET result=? WHERE candidate=? AND form=?',
                            (canonical(result), candidate, name))
+
+
+def quick_item_diagnostics(bank, records):
+    items = []
+    for key in sorted(bank):
+        choices = {
+            candidate: {
+                name: rounds[name]['choices'].get(key)
+                if rounds.get(name) and rounds[name]['usable'] else None
+                for name in QUICK
+            }
+            for candidate, rounds in records.items()
+        }
+        replay_flips = []
+        swap_flips = []
+        for candidate, row in choices.items():
+            baseline = row['D1']
+            if baseline is None:
+                continue
+            if row['D2'] is not None and baseline != row['D2']:
+                replay_flips.append(candidate)
+            if row['D6'] is not None and baseline != row['D6']:
+                swap_flips.append(candidate)
+        complete = all(None not in row.values() for row in choices.values())
+        signal = None
+        if complete and len(choices) == 2 and not replay_flips and not swap_flips:
+            baselines = {row['D1'] for row in choices.values()}
+            signal = '稳定分歧' if len(baselines) == 2 else '稳定同选'
+        items.append({'id': key, 'choices': choices, 'all_slots_valid': complete,
+                      'replay_flips': replay_flips, 'swap_flips': swap_flips, 'signal': signal})
+    return items
 
 
 def summarize(db, bank, questionnaires, manifest):
@@ -409,6 +450,7 @@ def summarize(db, bank, questionnaires, manifest):
     common, items = choose(bank, records)
     return {'phase': '探索性开发试验', 'attempt_count': sum(bool(row['claimed_at_utc']) for row in slots),
             'planned_count': len(slots), 'pairwise': comparisons, 'slots': slots,
+            'quick_item_diagnostics': quick_item_diagnostics(bank, records),
             'shared_configurations': common, 'predictive_selection_provisional': items,
             'budget_usd_estimate': manifest['budget']['total_usd_estimate']}
 
@@ -419,6 +461,8 @@ def main():
     cli.add_argument('--endpoints', type=Path)
     cli.add_argument('--db', type=Path)
     cli.add_argument('--max-usd', type=float)
+    cli.add_argument('--quick', action='store_true', help='仅发送 D1、D2、D6，使用一至两个候选')
+    cli.add_argument('--allow-http', action='store_true', help='仅用于获明确授权的明文 HTTP 小试')
     args = cli.parse_args()
     bank = load_bank()
     questionnaires = forms(bank)
@@ -429,8 +473,9 @@ def main():
     else:
         if args.endpoints is None:
             cli.error('此命令需要 --endpoints')
-        config = read_endpoints(args.endpoints)
-        estimate = budget(config, questionnaires)
+        config = read_endpoints(args.endpoints, quick=args.quick, allow_http=args.allow_http)
+        configurations = QUICK if args.quick else DEVELOPMENT
+        estimate = budget(config, questionnaires, configurations)
         if args.command == 'budget':
             value = estimate
         else:
@@ -446,8 +491,10 @@ def main():
             with ledger(args.db) as db:
                 manifest = initialize(db, config, questionnaires)
                 if args.command == 'collect':
-                    collect(db, config, questionnaires)
+                    collect(db, config, questionnaires, configurations=configurations)
                 value = summarize(db, bank, questionnaires, manifest)
+                if args.quick:
+                    value['selected_slots_budget_usd_estimate'] = estimate['total_usd_estimate']
     print(json.dumps(value, ensure_ascii=False, indent=2))
 
 

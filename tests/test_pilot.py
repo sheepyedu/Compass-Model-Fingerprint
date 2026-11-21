@@ -160,6 +160,67 @@ class PilotTest(unittest.TestCase):
             self.assertEqual('不可测', report['pairwise']['deepseek-pro']['D3–D4']['status'])
             self.assertTrue(any(row['state'] == '发送或计费状态未知' for row in report['slots']))
 
+    def test_small_pilot_limits_dispatch_and_reports_item_signals(self):
+        config = [endpoint('deepseek-flash'), endpoint('deepseek-pro')]
+        names = {row['candidate'] for row in config}
+        attempts = []
+
+        def fake_send(entry, form, _key):
+            candidate, name = entry['candidate'], form['name']
+            attempts.append((candidate, name))
+            letter = 'A' if (candidate == 'deepseek-flash') != (name == 'D6') else 'B'
+            data = response(50).replace(' A', f' {letter}')
+            if candidate == 'deepseek-flash' and name == 'D2':
+                data = data.replace('Q02 A', 'Q02 B')
+            if candidate == 'deepseek-flash' and name == 'D6':
+                data = data.replace('Q03 B', 'Q03 A')
+            return {'text': data, 'normal': True}
+
+        with tempfile.TemporaryDirectory() as directory:
+            with pilot.ledger(Path(directory) / 'quick.sqlite3') as db, patch.dict(
+                os.environ, {'COMPASS_PILOT_TEST_KEY': 'mock'}
+            ):
+                manifest = pilot.initialize(db, config, FORMS)
+                for _ in range(2):
+                    pilot.collect(db, config, FORMS, fake_send, configurations=pilot.QUICK)
+                report = pilot.summarize(db, BANK, FORMS, manifest)
+        self.assertEqual([(candidate['candidate'], form) for form in pilot.QUICK
+                          for candidate in config], attempts)
+        self.assertEqual(6, report['attempt_count'])
+        self.assertEqual(14, report['planned_count'])
+        self.assertEqual(6, len(pilot.budget(config, FORMS, pilot.QUICK)['slots']))
+        items = {item['id']: item for item in report['quick_item_diagnostics']}
+        self.assertEqual('稳定分歧', items['Q01']['signal'])
+        self.assertEqual(['deepseek-flash'], items['Q02']['replay_flips'])
+        self.assertEqual(['deepseek-flash'], items['Q03']['swap_flips'])
+        self.assertEqual(names, items['Q01']['choices'].keys())
+
+    def test_single_endpoint_quick_mode_skips_cross_model_selection(self):
+        config = [dict(endpoint('deepseek-flash'), model='deepseek-flash', defaults={})]
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'endpoints.json'
+            path.write_text(json.dumps(config))
+            with self.assertRaises(ValueError):
+                pilot.read_endpoints(path)
+            self.assertEqual(config, pilot.read_endpoints(path, quick=True))
+        usable = pilot.parse(response(50), FORMS['D1'], True)
+        common, selected = pilot.choose(BANK, {'deepseek-flash': {'D1': usable}})
+        self.assertEqual(['D1'], common)
+        self.assertFalse(selected)
+
+    def test_plain_http_requires_explicit_quick_opt_in(self):
+        config = [dict(endpoint('deepseek-flash'), model='deepseek-v4-1-flash-261017', defaults={}),
+                  dict(endpoint('deepseek-flash-260910'), model='deepseek-v4-1-flash-260910',
+                       url='http://example.test/chat/completions', defaults={})]
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'endpoints.json'
+            path.write_text(json.dumps(config))
+            with self.assertRaisesRegex(ValueError, 'HTTPS'):
+                pilot.read_endpoints(path, quick=True)
+            self.assertEqual(config, pilot.read_endpoints(path, quick=True, allow_http=True))
+            with self.assertRaisesRegex(ValueError, '白名单'):
+                pilot.read_endpoints(path, allow_http=True)
+
     def test_wire_response_shapes(self):
         chat = {'choices': [{'message': {'content': 'Q01 A'}, 'finish_reason': 'length'}]}
         self.assertFalse(pilot.decode_response('chat', chat)['normal'])
