@@ -44,6 +44,7 @@ LABELS = {
     'gpt-luna': 'GPT 6 Luna',
     'gpt-terra': 'GPT 6.1 Terra',
     'claude-haiku-55': 'Claude Haiku 5.5',
+    'claude-sonnet-46': 'Claude Sonnet 4.6',
     'claude-sonnet-5': 'Claude Sonnet 5',
     'claude-sonnet-55': 'Claude Sonnet 5.5',
 }
@@ -55,6 +56,7 @@ MODEL_IDS = {
     'gpt-luna': {'gpt-6-luna'},
     'gpt-terra': {'gpt-6.1-terra'},
     'claude-haiku-55': {'claude-haiku-5-5'},
+    'claude-sonnet-46': {'claude-sonnet-4-6'},
     'claude-sonnet-5': {'claude-sonnet-5'},
     'claude-sonnet-55': {'claude-sonnet-5-5'},
 }

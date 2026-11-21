@@ -32,6 +32,7 @@ class PilotTest(unittest.TestCase):
     def test_claude_allowlist_omits_legacy_haiku(self):
         expected = {
             'claude-haiku-55': 'claude-haiku-5-5',
+            'claude-sonnet-46': 'claude-sonnet-4-6',
             'claude-sonnet-5': 'claude-sonnet-5',
             'claude-sonnet-55': 'claude-sonnet-5-5',
         }

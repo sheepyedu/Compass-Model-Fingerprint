@@ -1,6 +1,6 @@
 # 探索性开发试验运行说明
 
-现阶段采集 D1–D6 和额外的 D7，共七次整卷调用／端点。六个 DeepSeek／GPT 候选加三个 Claude，最多 63 次。D7 单列，原正式协议的六个建档槽位与四个盲测槽位保留其原有用途。若九个端点原配置继续用于正式验证，另需 36 次真实盲测。最终扩大名单时，每个新增端点六次开发建档和四次盲测。正式候选只在验证阶段冻结。
+现阶段采集 D1–D6 和额外的 D7，共七次整卷调用／端点。六个 DeepSeek／GPT 候选加四个 Claude，最多 70 次。D7 单列，原正式协议的六个建档槽位与四个盲测槽位保留其原有用途。若十个端点原配置继续用于正式验证，另需 40 次真实盲测。最终扩大名单时，每个新增端点六次开发建档和四次盲测。正式候选只在验证阶段冻结。
 
 以下是官方目录中可核对的候选 ID。实际网关版本、当前权限、费率和连续消息行为需要在发送前确认。
 
@@ -13,12 +13,13 @@
 | gpt-luna | `gpt-6-luna` | 0.10 / 0.50 |
 | gpt-terra | `gpt-6.1-terra` | 1.00 / 5.00 |
 | claude-haiku-55 | `claude-haiku-5-5` | 0.10 / 0.50，100,000 输入 token 以内 |
+| claude-sonnet-46 | `claude-sonnet-4-6` | 3.00 / 15.00 |
 | claude-sonnet-5 | `claude-sonnet-5` | 2.00 / 10.00 |
 | claude-sonnet-55 | `claude-sonnet-5-5` | 2.00 / 10.00 |
 
-两个 Sonnet 采用 5 和 5.5。官方目录中较新的 Haiku 只有 5.5，4.5 已列为 Legacy，因此 Haiku 暂只占一个席位。网关访问仍待验证。 [DeepSeek 定价](https://api-docs.deepseek.com/quick_start/pricing/) · [OpenAI 定价](https://developers.openai.com/api/docs/pricing) · [Claude 定价](https://platform.claude.com/docs/en/about-claude/pricing) · [Claude 生命周期](https://platform.claude.com/docs/en/about-claude/model-deprecations)
+Sonnet 采用 5、5.5 和指定加入的 4.6。4.6 在官方模型页标为 Legacy，生命周期页面仍列为 Active。官方目录中较新的 Haiku 只有 5.5，4.5 已列为 Legacy，因此 Haiku 暂只占一个席位。网关访问仍待验证。 [DeepSeek 定价](https://api-docs.deepseek.com/quick_start/pricing/) · [OpenAI 定价](https://developers.openai.com/api/docs/pricing) · [Claude 定价](https://platform.claude.com/docs/en/about-claude/pricing) · [Claude 生命周期](https://platform.claude.com/docs/en/about-claude/model-deprecations)
 
-官方费率下，以每次 15,000 输入 token、最多 1,024 计费输出 token 预留，本轮九端点七次约 **1.50 美元**，其中 DeepSeek 两端点约 **0.21 美元**。按当前模板正文和每次 1,024 token 的消息开销预留计算，九端点的官方费率参考值约 **1.40 美元**。运行器计算每份实际消息正文 UTF-8 字节数，再加清单中的服务端消息开销预留，乘以确认的端点费率。对存在未知服务端提示、分词或计价开销的网关，先核实后调整预留。
+官方费率下，以每次 15,000 输入 token、最多 1,024 计费输出 token 预留，本轮十端点七次约 **1.93 美元**，其中 DeepSeek 两端点约 **0.21 美元**。按当前模板正文和每次 1,024 token 的消息开销预留计算，十端点的官方费率参考值约 **1.80 美元**。运行器计算每份实际消息正文 UTF-8 字节数，再加清单中的服务端消息开销预留，乘以确认的端点费率。对存在未知服务端提示、分词或计价开销的网关，先核实后调整预留。
 
 ## 本地清单
 
